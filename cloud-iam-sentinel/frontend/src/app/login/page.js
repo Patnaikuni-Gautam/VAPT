@@ -2,69 +2,87 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getToken, saveToken } from "@/lib/auth";
-import { loginUser } from "@/services/authService";
 import InputField from "@/components/InputField";
+import { loginUser } from "@/services/authService";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [formData, setFormData] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
 
+  // Redirect if already logged in
   useEffect(() => {
-    const token = getToken();
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
     if (token) {
       router.push("/dashboard");
     }
-  }, []);
+  }, [router]);
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  const handleChange = (e) =>
+    setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const res = await loginUser(form);
+    setError("");
 
-    if (res.token) {
-      saveToken(res.token);
+    try {
+      const res = await loginUser(formData);
+
+      // Store token based on rememberMe
+      if (rememberMe) {
+        localStorage.setItem("token", res.token);
+      } else {
+        sessionStorage.setItem("token", res.token);
+      }
+
+      alert("Login successful");
       router.push("/dashboard");
-    } else {
-      setError(res.message || "Login failed");
+    } catch (err) {
+      setError(err.message || "Login failed");
     }
   };
 
   return (
-    <div className="flex justify-center items-center h-screen bg-gray-50">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md"
-      >
-        <h2 className="text-2xl font-semibold text-center mb-6">Login</h2>
+    <div className="max-w-md mx-auto mt-20 p-6 border rounded shadow">
+      <h2 className="text-2xl font-bold mb-4">Login</h2>
+      {error && <p className="text-red-500 mb-2">{error}</p>}
 
-        {error && <p className="text-red-500 mb-4 text-sm">{error}</p>}
-
+      <form onSubmit={handleSubmit}>
         <InputField
           label="Email"
           type="email"
           name="email"
-          value={form.email}
+          value={formData.email}
           onChange={handleChange}
-          placeholder="you@example.com"
+          placeholder="email@example.com"
         />
 
         <InputField
           label="Password"
           type="password"
           name="password"
-          value={form.password}
+          value={formData.password}
           onChange={handleChange}
-          placeholder="••••••••"
+          placeholder="Your password"
         />
+
+        <div className="flex items-center mt-2">
+          <input
+            type="checkbox"
+            id="rememberMe"
+            checked={rememberMe}
+            onChange={() => setRememberMe(!rememberMe)}
+            className="mr-2"
+          />
+          <label htmlFor="rememberMe" className="text-sm text-gray-700">
+            Remember me
+          </label>
+        </div>
 
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition"
+          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 mt-4"
         >
           Login
         </button>

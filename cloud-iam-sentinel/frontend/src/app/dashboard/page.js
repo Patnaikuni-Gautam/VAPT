@@ -1,33 +1,41 @@
 "use client";
 
-import ProtectedRoute from "@/components/ProtectedRoute";
-import { getToken } from "@/lib/auth";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
-export default function DashboardPage() {
-  const [user, setUser] = useState(null);
+export default function Dashboard() {
+  const router = useRouter();
+  const [token, setToken] = useState(null);
 
   useEffect(() => {
-    const token = getToken();
-    if (token) {
-      // Mock decode or fetch user details from backend
-      const payload = JSON.parse(atob(token.split(".")[1]));
-      setUser(payload);
+    // Check both localStorage and sessionStorage
+    const savedToken = localStorage.getItem("token") || sessionStorage.getItem("token");
+    if (!savedToken) {
+      router.push("/login");
+    } else {
+      setToken(savedToken);
     }
-  }, []);
+  }, [router]);
+
+  const handleLogout = () => {
+    // Clear token from both storages
+    localStorage.removeItem("token");
+    sessionStorage.removeItem("token");
+    router.push("/login");
+  };
+
+  if (!token) return <p className="text-center mt-10">Redirecting...</p>;
 
   return (
-    <ProtectedRoute>
-      <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
-        <div className="bg-white p-6 rounded-2xl shadow-md text-center w-full max-w-xl">
-          <h1 className="text-3xl font-bold mb-4">Welcome to the Dashboard</h1>
-          {user ? (
-            <p className="text-gray-700">Logged in as <strong>{user.email}</strong></p>
-          ) : (
-            <p className="text-gray-500">Loading user info...</p>
-          )}
-        </div>
-      </div>
-    </ProtectedRoute>
+    <div className="max-w-2xl mx-auto mt-20 p-6 border rounded shadow bg-white">
+      <h1 className="text-3xl font-bold mb-4">Welcome to the Dashboard</h1>
+      <p className="mb-6">This is a protected route. Only logged-in users can see this.</p>
+      <button
+        onClick={handleLogout}
+        className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+      >
+        Logout
+      </button>
+    </div>
   );
 }
