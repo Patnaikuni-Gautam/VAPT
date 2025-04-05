@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { verifyUser } from "@/services/authService";
+
+const Spinner = () => (
+  <div className="border-gray-300 h-5 w-5 animate-spin rounded-full border-2 border-t-blue-600" />
+);
 
 export default function ProtectedRoute({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -9,18 +14,26 @@ export default function ProtectedRoute({ children }) {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-
-    if (!token) {
-      router.push("/login");
-    } else {
-      setIsAuthenticated(true);
-    }
-
-    setLoading(false);
+    verifyUser()
+      .then(data => {
+        if (data?.user) {
+          setIsAuthenticated(true);
+        } else {
+          router.push("/login?message=Session expired");
+        }
+      })
+      .catch(() => router.push("/login?message=Unauthorized"))
+      .finally(() => setLoading(false));
   }, [router]);
 
-  if (loading) return <p className="text-center mt-10">Checking access...</p>;
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gray-100">
+        <Spinner />
+        <p className="ml-2 text-gray-600">Verifying access...</p>
+      </div>
+    );
+  }
 
   return isAuthenticated ? children : null;
 }

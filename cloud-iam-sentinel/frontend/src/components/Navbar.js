@@ -1,37 +1,41 @@
 "use client";
+
 import { useRouter } from "next/navigation";
-import { removeToken } from "@/lib/auth";
+import { logoutUser } from "@/services/authService";
 
 export default function Navbar() {
   const router = useRouter();
 
-  const handleLogout = () => {
-    removeToken();
-    router.push("/login");
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      router.push("/login");
+    } catch (error) {
+      console.error("Logout failed:", error.message);
+    }
   };
 
   return (
-    <nav className="bg-white shadow p-4 flex justify-between items-center">
-      <div className="text-xl font-bold">Cloud IAM Sentinel</div>
-      <div className="flex gap-4">
-        <button
-          onClick={() => router.push("/dashboard")}
-          className="text-blue-600 hover:underline"
-        >
-          Dashboard
-        </button>
-        <button
-          onClick={() => router.push("/misconfigurations")}
-          className="text-blue-600 hover:underline"
-        >
-          Misconfigurations
-        </button>
-        <button
-          onClick={handleLogout}
-          className="text-red-600 hover:underline"
-        >
-          Logout
-        </button>
+    <nav className="bg-gray-800 text-white p-4">
+      <div className="max-w-7xl mx-auto flex justify-between items-center">
+        <div onClick={() => router.push("/dashboard")} 
+          className="text-lg font-bold cursor-pointer hover:text-gray-300">
+          Cloud IAM Checker
+        </div>
+        <div className="space-x-4">
+          <button onClick={() => router.push("/dashboard")} 
+            className="hover:text-gray-300">
+            Dashboard
+          </button>
+          <button onClick={() => router.push("/misconfigurations")} 
+            className="hover:text-gray-300">
+            Misconfigurations
+          </button>
+          <button onClick={handleLogout}
+            className="bg-red-600 px-3 py-1 rounded hover:bg-red-700">
+            Logout
+          </button>
+        </div>
       </div>
     </nav>
   );
