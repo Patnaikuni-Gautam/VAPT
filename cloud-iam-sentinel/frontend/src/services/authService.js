@@ -7,7 +7,6 @@ const handleResponse = async (response) => {
     const errorData = await response.json().catch(() => ({ message: response.statusText }));
     throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
   }
-  // If response is OK but has no content (e.g., logout)
   if (response.status === 204 || response.headers.get('content-length') === '0') {
     return null;
   }
@@ -18,9 +17,7 @@ const handleResponse = async (response) => {
 export const registerUser = async (userData) => {
   const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(userData),
     credentials: 'include',
   });
@@ -32,9 +29,7 @@ export const loginUser = async (credentials) => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(credentials),
     });
@@ -51,10 +46,10 @@ export const loginUser = async (credentials) => {
   }
 };
 
-// Verify User Session (checks the HttpOnly cookie)
+// Verify User
 export const verifyUser = async () => {
   try {
-    const response = await fetch("http://localhost:5000/api/auth/verify", {
+    const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
       method: "GET",
       credentials: "include",
     });
@@ -69,6 +64,10 @@ export const verifyUser = async () => {
     if (!window.navigator.onLine) {
       throw new Error("No internet connection");
     }
+    // Handle session expiry or token issues
+    if (error.message.includes("Session expired")) {
+      throw new Error("Session expired. Please log in again.");
+    }
     throw error;
   }
 };
@@ -77,9 +76,7 @@ export const verifyUser = async () => {
 export const logoutUser = async () => {
   const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
   });
   return handleResponse(response);

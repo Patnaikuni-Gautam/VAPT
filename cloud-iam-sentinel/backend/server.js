@@ -4,49 +4,49 @@ const connectDB = require("./config/db");
 const cors = require("cors");
 const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
-const session = require('express-session');
-const rateLimit = require('express-rate-limit');
+const session = require("express-session");
+const rateLimit = require("express-rate-limit");
 
 const authRoutes = require("./routes/authRoutes");
 
 const app = express();
 connectDB();
 
-// Security headers
+// Middleware
 app.use(helmet());
-app.use(express.json({ limit: '10kb' }));
+app.use(express.json({ limit: "10kb" }));
 app.use(cookieParser());
 
-// Session configuration
+// Session setup: make sure the session expires based on tab close behavior
 app.use(session({
   secret: process.env.SESSION_SECRET || process.env.JWT_SECRET,
   resave: false,
   saveUninitialized: false,
-  rolling: true,
+  rolling: true,  // This ensures the session cookie is updated with every request
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    sameSite: 'strict'
-    // Don't set maxAge here - it will be set dynamically based on remember me option
+    secure: process.env.NODE_ENV === "production",  // Ensure the cookie is only sent over HTTPS in production
+    httpOnly: true,  // Prevent access to the cookie via JavaScript
+    sameSite: "strict",  // Mitigate CSRF attacks
+    expires: false,  // This makes the session expire when the browser/tab is closed
   }
 }));
 
-// CORS configuration
-const allowedOrigins = ['http://localhost:3001'];
+// CORS
+const allowedOrigins = ["http://localhost:3001"];
 app.use(cors({
-  origin: function(origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      callback(new Error("Not allowed by CORS"));
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-// Rate limiting
+// Rate limiter
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -56,28 +56,18 @@ const limiter = rateLimit({
 });
 app.use("/api", limiter);
 
-// Root route
-app.get('/', (req, res) => {
-  res.json({ message: 'Cloud IAM Sentinel API is running' });
-});
-
-// Health check endpoint
-app.get("/health", (req, res) => {
-  res.status(200).json({ status: "healthy" });
-});
-
 // Routes
+app.get("/", (req, res) => res.json({ message: "Cloud IAM Sentinel API is running" }));
+app.get("/health", (req, res) => res.status(200).json({ status: "healthy" }));
 app.use("/api/auth", authRoutes);
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ message: 'Route not found' });
-});
+// 404
+app.use((req, res) => res.status(404).json({ message: "Route not found" }));
 
-// Error handling middleware
+// Error Handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Something went wrong!' });
+  console.error("Internal Server Error:", err.stack);
+  res.status(500).json({ message: "Something went wrong!" });
 });
 
 const PORT = process.env.PORT || 5000;
