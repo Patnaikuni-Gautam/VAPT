@@ -6,7 +6,7 @@ const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
 const session = require("express-session");
 const rateLimit = require("express-rate-limit");
-
+const iamRoutes = require('./routes/iamRoutes');
 const authRoutes = require("./routes/authRoutes");
 
 const app = express();
@@ -60,6 +60,7 @@ app.use("/api", limiter);
 app.get("/", (req, res) => res.json({ message: "Cloud IAM Sentinel API is running" }));
 app.get("/health", (req, res) => res.status(200).json({ status: "healthy" }));
 app.use("/api/auth", authRoutes);
+app.use('/api/iam', iamRoutes);
 
 // 404
 app.use((req, res) => res.status(404).json({ message: "Route not found" }));
