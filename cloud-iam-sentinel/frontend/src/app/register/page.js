@@ -1,105 +1,181 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { registerUser, verifyUser } from "@/services/authService";
-import InputField from "@/components/InputField";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { api } from '@/utils/api';
+import { useTheme } from '@/contexts/ThemeContext';
+import ThemeToggleClient from '@/components/ThemeToggleClient';
 
-export default function RegisterPage() {
+export default function Register() {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    organization: '',
+  });
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [loading, setLoading] = useState(true);
-
-  // Check if already authenticated using cookie
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        await verifyUser();
-        router.push("/dashboard");
-      } catch {
-        setLoading(false);
-      }
-    };
-    checkAuth();
-  }, [router]);
+  const { darkMode } = useTheme();
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    setSuccess("");
-    setLoading(true);
+    setIsLoading(true);
+    setError('');
+
+    // Simple validation
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords don't match");
+      setIsLoading(false);
+      return;
+    }
 
     try {
-      const res = await registerUser(form);
-      if (res.message === "User registered successfully") {
-        setSuccess("Registered successfully! Redirecting to login...");
-        setTimeout(() => {
-          router.push("/login");
-        }, 2000);
+      const response = await api.post('/auth/register', {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        organization: formData.organization
+      });
+
+      if (response.success) {
+        // Registration successful, redirect to login
+        router.push('/login');
       }
-    } catch (err) {
-      setError(err.message || "Registration failed");
+    } catch (error) {
+      setError(error.message || 'Registration failed');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  if (loading) {
-    return <div className="text-center mt-10">Loading...</div>;
-  }
-
   return (
-    <div className="flex justify-center items-center h-screen bg-gray-50">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md"
-      >
-        <h2 className="text-2xl font-semibold text-center mb-6">Register</h2>
-
-        {error && <p className="text-red-500 mb-4 text-sm">{error}</p>}
-        {success && <p className="text-green-600 mb-4 text-sm">{success}</p>}
-
-        <InputField
-          label="Name"
-          type="text"
-          name="name"
-          value={form.name}
-          onChange={handleChange}
-          placeholder="John Doe"
-        />
-
-        <InputField
-          label="Email"
-          type="email"
-          name="email"
-          value={form.email}
-          onChange={handleChange}
-          placeholder="you@example.com"
-        />
-
-        <InputField
-          label="Password"
-          type="password"
-          name="password"
-          value={form.password}
-          onChange={handleChange}
-          placeholder="••••••••"
-        />
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition disabled:opacity-50"
-        >
-          {loading ? "Registering..." : "Register"}
-        </button>
-      </form>
+    <div className={`min-h-screen flex items-center justify-center ${darkMode 
+      ? 'bg-gray-900' 
+      : 'bg-gradient-to-b from-blue-50 to-blue-100'} p-4`}>
+      
+      <div className="absolute top-4 right-4">
+        <ThemeToggleClient />
+      </div>
+      
+      <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
+        <h1 className="text-3xl font-bold text-center text-blue-800 dark:text-blue-400 mb-6">
+          Create an Account
+        </h1>
+        
+        {error && (
+          <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded mb-4">
+            {error}
+          </div>
+        )}
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Full Name
+            </label>
+            <input
+              id="name"
+              name="name"
+              type="text"
+              value={formData.name}
+              onChange={handleChange}
+              className="input-field dark:bg-gray-700 dark:text-gray-300"
+              placeholder="John Doe"
+              required
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Email Address
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="input-field dark:bg-gray-700 dark:text-gray-300"
+              placeholder="your@email.com"
+              required
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="organization" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Organization
+            </label>
+            <input
+              id="organization"
+              name="organization"
+              type="text"
+              value={formData.organization}
+              onChange={handleChange}
+              className="input-field dark:bg-gray-700 dark:text-gray-300"
+              placeholder="Your Company Name"
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Password
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              value={formData.password}
+              onChange={handleChange}
+              className="input-field dark:bg-gray-700 dark:text-gray-300"
+              placeholder="••••••••"
+              minLength="8"
+              required
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Confirm Password
+            </label>
+            <input
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              className="input-field dark:bg-gray-700 dark:text-gray-300"
+              placeholder="••••••••"
+              minLength="8"
+              required
+            />
+          </div>
+          
+          <button
+            type="submit"
+            className="w-full btn-primary py-3 mt-2 dark:bg-blue-700 dark:text-white"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Creating account...' : 'Create Account'}
+          </button>
+        </form>
+        
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Already have an account?{' '}
+            <Link href="/login" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-500 font-medium">
+              Sign in
+            </Link>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

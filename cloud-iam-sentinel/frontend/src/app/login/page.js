@@ -1,115 +1,134 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import InputField from "@/components/InputField";
-import { loginUser, verifyUser } from "@/services/authService";
+import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import ThemeToggleClient from '@/components/ThemeToggleClient';
 
-const Spinner = () => (
-  <div className="border-gray-300 h-5 w-5 animate-spin rounded-full border-2 border-t-blue-600" />
-);
-
-export default function LoginPage() {
+export default function Login() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  
   const router = useRouter();
-  const [formData, setFormData] = useState({ email: "", password: "", remember: false });
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const searchParams = useSearchParams();
+  const { login, isAuthenticated, isAdmin, clearError } = useAuth();
+  const { darkMode } = useTheme();
 
+  // Clear errors and check URL params
   useEffect(() => {
-    verifyUser()
-      .then(() => router.push("/dashboard"))
-      .catch(() => setLoading(false));
-  }, [router]);
+    clearError();
+    
+    const urlError = searchParams.get('error');
+    if (urlError === 'session_expired') {
+      setError('Your session has expired. Please log in again.');
+    } else if (urlError === 'authentication_required') {
+      setError('You need to log in to access that page.');
+    }
+  }, [clearError, searchParams]);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      const returnTo = searchParams.get('returnTo');
+      if (returnTo && returnTo.startsWith('/')) {
+        router.push(returnTo);
+      } else if (isAdmin) {
+        router.push('/admin/dashboard');
+      } else {
+        router.push('/dashboard');
+      }
+    }
+  }, [isAuthenticated, isAdmin, router, searchParams]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    setLoading(true);
+    setIsLoading(true);
+    setError('');
 
-    try {
-      await loginUser(formData);
-      router.push("/dashboard");
-    } catch (err) {
-      setError(err.message || "Login failed");
-      setLoading(false);
+    if (!email || !password) {
+      setError('Please enter both email and password');
+      setIsLoading(false);
+      return;
     }
+
+    const result = await login(email, password);
+    if (!result.success) {
+      setError(result.message || 'Login failed');
+    }
+    setIsLoading(false);
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen bg-gray-100">
-        <Spinner />
-        <p className="ml-2 text-gray-600">Please wait...</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-white to-cyan-100 px-4">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
-        <div>
-          <h2 className="text-center text-3xl font-bold text-gray-900">Sign in</h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
-            <Link href="/register" className="font-medium text-indigo-600 hover:text-indigo-500">
-              create a new account
-            </Link>
-          </p>
-        </div>
-
+    <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-gray-900' : 'bg-blue-50'} p-4`}>
+      <div className="absolute top-4 right-4">
+        <ThemeToggleClient />
+      </div>
+      
+      <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
+        <h1 className="text-3xl font-bold text-center text-blue-800 dark:text-blue-400 mb-6">
+          Login to Cloud IAM Sentinel
+        </h1>
+        
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          <div className="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded mb-4">
             {error}
           </div>
         )}
-
-        <form className="space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md -space-y-px">
-            <InputField
-              label="Email"
-              name="email"
-              type="email"
-              required
-              value={formData.email}
-              onChange={(e) => setFormData({...formData, email: e.target.value})}
-              placeholder="Email address"
-              className="rounded-t-md w-full px-3 py-2 border focus:ring-indigo-500 focus:border-indigo-500"
-            />
-            <InputField
-              label="Password"
-              name="password"
-              type="password"
-              required
-              value={formData.password}
-              onChange={(e) => setFormData({...formData, password: e.target.value})}
-              placeholder="Password"
-              className="rounded-b-md w-full px-3 py-2 border focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </div>
-
-          <div className="flex items-center">
-            <input
-              id="remember"
-              name="remember"
-              type="checkbox"
-              checked={formData.remember}
-              onChange={(e) => setFormData({...formData, remember: e.target.checked})}
-              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-            />
-            <label htmlFor="remember" className="ml-2 text-sm text-gray-900">
-              Remember me
+        
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Email Address
             </label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="input-field dark:bg-gray-700 dark:text-gray-300"
+              placeholder="your@email.com"
+              required
+              disabled={isLoading}
+            />
           </div>
-
+          
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="input-field dark:bg-gray-700 dark:text-gray-300"
+              placeholder="••••••••"
+              required
+              disabled={isLoading}
+            />
+          </div>
+          
           <button
             type="submit"
-            disabled={loading}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+            className="w-full btn-primary py-3 dark:bg-blue-700 dark:text-white disabled:opacity-70"
+            disabled={isLoading}
           >
-            {loading ? <Spinner /> : "Sign in"}
+            {isLoading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
+        
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Don't have an account?{' '}
+            <Link href="/register" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-500 font-medium">
+              Register
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
